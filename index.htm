@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ウインズめじろ（馬術部展示）シフト管理</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'equestrian-green': '#15803d',
+                        'equestrian-light-green': '#f0fdf4',
+                        'equestrian-dark': '#14532d',
+                        'equestrian-gold': '#d97706',
+                        'equestrian-sand': '#fef3c7'
+                    },
+                    fontFamily: {
+                        'sans': ['"M PLUS Rounded 1c"', 'sans-serif'],
+                        'kiwi': ['"Kiwi Maru"', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f4f7f4;
+            background-image: radial-gradient(#15803d 0.75px, transparent 0.75px), radial-gradient(#d97706 0.75px, #f4f7f4 0.75px);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+        }
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        body.modal-active {
+            overflow-x: hidden;
+            overflow-y: visible !important;
+        }
+        /* セレクトボックスのカスタムデザイン */
+        select.time-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2315803d' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1.2em;
+        }
+    </style>
+</head>
+<body class="font-sans text-gray-800 min-h-screen flex flex-col pb-12">
+
+    <!-- ヘッダー -->
+    <header class="bg-white/90 backdrop-blur-md shadow-md sticky top-0 z-30 border-b-4 border-equestrian-green">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-equestrian-green text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl shadow-inner">
+                    <i class="fa-solid fa-horse"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold font-kiwi text-emerald-800 flex items-center gap-2">
+                        ウインズめじろ
+                        <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-300 font-sans hidden sm:inline-block">馬術部展示</span>
+                    </h1>
+                    <p class="text-xs text-gray-500">文化祭シフト管理システム</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="alarmSettingsBtn" class="bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition shadow-sm">
+                    <i class="fa-solid fa-bell text-amber-600"></i>
+                    <span class="hidden sm:inline">アラーム設定</span>
+                </button>
+                <button id="adminLoginBtn" class="bg-equestrian-dark hover:bg-emerald-950 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition shadow-sm">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span id="adminBtnText">管理者</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="max-w-6xl mx-auto px-4 py-6 flex-grow w-full">
+
+        <!-- アラーム有効中通知バー -->
+        <div id="alarmActiveBanner" class="hidden mb-6 bg-amber-50 border-2 border-amber-400 text-amber-900 px-4 py-3 rounded-xl shadow-sm flex items-center justify-between animate-pulse">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-bell-ring text-amber-600 text-xl"></i>
+                <div>
+                    <span class="font-bold text-sm sm:text-base">アラーム通知が有効です</span>
+                    <span id="alarmTimeText" class="text-xs sm:text-sm block text-amber-700">シフト開始時間の5分前に通知と音が鳴ります。</span>
+                </div>
+            </div>
+            <span class="text-xs bg-amber-200 text-amber-900 px-2 py-1 rounded font-bold">画面維持必須</span>
+        </div>
+
+        <!-- 案内カード -->
+        <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-emerald-100 mb-8 relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 opacity-10 text-emerald-600 pointer-events-none">
+                <i class="fa-solid fa-horse-head text-9xl"></i>
+            </div>
+            <h2 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-emerald-600"></i> シフト登録のお願い
+            </h2>
+            <ul class="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                <li>1つのシフト枠には<strong class="text-emerald-700">6人以上</strong>が必要です。人数の足りない枠を優先して登録してください。</li>
+                <li>自分が参加する時間枠を選択して「登録する」ボタンを押してください。</li>
+                <li>すでに登録したシフトを別の人と代わりたい場合は「交代を依頼・受諾する」機能をご利用ください。</li>
+            </ul>
+        </div>
+
+        <!-- 管理者用パネル (非表示/表示切り替え) -->
+        <section id="adminPanel" class="hidden mb-8 bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-md">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-amber-200">
+                <h3 class="font-bold text-amber-900 text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-amber-600"></i> 管理者設定パネル
+                </h3>
+                <span class="bg-amber-200 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full">管理者権限アクティブ</span>
+            </div>
+            
+            <!-- シフト追加フォーム -->
+            <form id="addShiftForm" class="bg-white p-4 rounded-xl shadow-sm border border-amber-200">
+                <h4 class="font-bold text-sm text-gray-700 mb-3">新しいシフト枠の追加</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">開始時間</label>
+                        <div class="flex items-center gap-1">
+                            <select id="newStartHour" class="time-select border border-gray-300 rounded px-2 py-1.5 text-sm w-full font-mono bg-white"></select>
+                            <span>:</span>
+                            <select id="newStartMin" class="time-select border border-gray-300 rounded px-2 py-1.5 text-sm w-full font-mono bg-white"></select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">終了時間</label>
+                        <div class="flex items-center gap-1">
+                            <select id="newEndHour" class="time-select border border-gray-300 rounded px-2 py-1.5 text-sm w-full font-mono bg-white"></select>
+                            <span>:</span>
+                            <select id="newEndMin" class="time-select border border-gray-300 rounded px-2 py-1.5 text-sm w-full font-mono bg-white"></select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">必要人数 (標準: 6人)</label>
+                        <input type="number" id="newRequired" value="6" min="1" max="20" class="border border-gray-300 rounded px-3 py-1.5 text-sm w-full" required>
+                    </div>
+                </div>
+                <div class="mt-3 text-right">
+                    <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow">
+                        <i class="fa-solid fa-plus"></i> シフト枠を追加
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- シフト一覧エリア -->
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold font-kiwi text-gray-800 flex items-center gap-2">
+                <i class="fa-regular fa-clock text-emerald-600"></i> シフト枠一覧
+            </h3>
+            <span id="totalShiftCount" class="text-sm font-bold text-gray-500">全 0 枠</span>
+        </div>
+
+        <!-- シフトカードグリッド -->
+        <div id="shiftGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- JavaScriptで動的生成 -->
+        </div>
+
+    </main>
+
+    <!-- アラーム設定 Modal -->
+    <div id="alarmModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 max-w-md mx-auto rounded-2xl shadow-2xl z-50 overflow-y-auto">
+            <div class="modal-content py-5 text-left px-6">
+                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                    <p class="text-lg font-bold text-emerald-900 flex items-center gap-2">
+                        <i class="fa-solid fa-bell text-amber-600"></i> アラーム・通知設定
+                    </p>
+                    <button class="modal-close-alarm cursor-pointer z-50 text-gray-400 hover:text-gray-600">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="my-4 space-y-4">
+                    <!-- 注意表示バナー -->
+                    <div class="bg-red-50 border-l-4 border-red-500 p-3.5 rounded-r-lg">
+                        <div class="flex items-start gap-2.5">
+                            <i class="fa-solid fa-triangle-exclamation text-red-500 text-lg mt-0.5"></i>
+                            <div>
+                                <h5 class="text-xs font-bold text-red-800 uppercase tracking-wider">重要なお知らせ</h5>
+                                <p class="text-xs text-red-700 mt-1 leading-relaxed">
+                                    ブラウザの仕組み上、<strong class="underline decoration-red-400">タブやページを完全に閉じるとアラームは動作しません</strong>。文化祭当日は本画面を開いたまま（またはバックグラウンド）でご利用ください。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">アラーム状態</label>
+                        <div class="flex items-center gap-3">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="enableAlarmToggle" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600 relative"></div>
+                                <span class="ml-2 text-sm font-bold text-gray-700" id="alarmToggleLabel">無効</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">通知タイミング</label>
+                        <select id="alarmTimingSelect" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                            <option value="5">シフト開始 5分前</option>
+                            <option value="10">シフト開始 10分前</option>
+                            <option value="15">シフト開始 15分前</option>
+                            <option value="0">シフト開始 時刻ちょうど</option>
+                        </select>
+                    </div>
+
+                    <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-100 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold text-emerald-900 block">アラーム音（効果音）のテスト</span>
+                            <span class="text-xs text-emerald-700">通知音を試聴できます</span>
+                        </div>
+                        <button id="testSoundBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">
+                            <i class="fa-solid fa-volume-high"></i> テスト再生
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-2 border-t border-gray-100 gap-2">
+                    <button class="modal-close-alarm px-4 py-2 bg-gray-200 text-gray-800 rounded-lg text-sm font-bold hover:bg-gray-300 transition">閉じる</button>
+                    <button id="saveAlarmSettingsBtn" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition">設定を保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- シフト登録・交代 モーダル -->
+    <div id="registerModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 max-w-md mx-auto rounded-2xl shadow-2xl z-50 overflow-y-auto">
+            <div class="modal-content py-5 text-left px-6">
+                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                    <p id="modalShiftTime" class="text-lg font-bold text-emerald-800 font-kiwi">シフト枠登録</p>
+                    <button class="modal-close cursor-pointer z-50 text-gray-400 hover:text-gray-600">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- タブ切替 (通常追加 vs 交代依頼) -->
+                <div class="flex border-b border-gray-200 mt-3 text-sm font-bold">
+                    <button id="tabAdd" class="flex-1 py-2 text-center text-emerald-700 border-b-2 border-emerald-600">新規参加登録</button>
+                    <button id="tabSwap" class="flex-1 py-2 text-center text-gray-400 hover:text-gray-600">メンバー交代</button>
+                </div>
+
+                <!-- 1. 新規登録フォーム -->
+                <form id="addMemberForm" class="mt-4">
+                    <input type="hidden" id="modalShiftId">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">お名前（フルネームまたはニックネーム）</label>
+                        <input type="text" id="memberNameInput" placeholder="例: 馬術太郎 / メジロ花子" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-500 text-sm" required>
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" class="modal-close px-4 py-2 bg-gray-200 text-gray-800 rounded-lg text-sm font-bold hover:bg-gray-300">キャンセル</button>
+                        <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow">登録する</button>
+                    </div>
+                </form>
+
+                <!-- 2. 交代フォーム -->
+                <form id="swapMemberForm" class="mt-4 hidden">
+                    <div class="mb-3">
+                        <label class="block text-gray-700 text-sm font-bold mb-1">抜ける人（交代元）</label>
+                        <select id="swapFromSelect" class="w-full border rounded-lg p-2 text-sm bg-white"></select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-1">代わりに入る人（交代先）</label>
+                        <input type="text" id="swapToInput" placeholder="例: 次郎" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-500 text-sm" required>
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" class="modal-close px-4 py-2 bg-gray-200 text-gray-800 rounded-lg text-sm font-bold hover:bg-gray-300">キャンセル</button>
+                        <button type="submit" class="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 transition shadow">交代を実行</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 編集用 モーダル (管理者) -->
+    <div id="editShiftModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 max-w-md mx-auto rounded-2xl shadow-2xl z-50 overflow-y-auto">
+            <div class="modal-content py-5 text-left px-6">
+                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                    <p class="text-lg font-bold text-amber-800">シフト枠の編集</p>
+                    <button class="modal-close-edit cursor-pointer z-50 text-gray-400 hover:text-gray-600">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+                <form id="editShiftForm" class="mt-4">
+                    <input type="hidden" id="editShiftId">
+                    <div class="mb-3">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">開始時間</label>
+                        <div class="flex items-center gap-1">
+                            <select id="editStartHour" class="time-select border border-gray-300 rounded px-2 py-1.5 text-sm w-full font-mono bg-white"></select>
+                            <span>:</span>
+                            <select id="editStartMin" class="time-select border border-gray-300 rounded px-2 py-1.5 text-sm w-full font-mono bg-white"></select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">終了時間</label>
+                        <div class="flex items-center gap-1">
+                            <select id="editEndHour" class="time-select border border-gray-300 rounded px-2 py-1.5 text-sm w-full font-mono bg-white"></select>
+                            <span>:</span>
+                            <select id="editEndMin" class="time-select border border-gray-300 rounded px-2 py-1.5 text-sm w-full font-mono bg-white"></select>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">必要人数</label>
+                        <input type="number" id="editRequired" min="1" max="20" class="w-full border rounded-lg px-3 py-1.5 text-sm" required>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <button type="button" id="deleteShiftBtn" class="text-red-500 hover:text-red-700 text-sm font-bold flex items-center gap-1">
+                            <i class="fa-solid fa-trash"></i> この枠を削除
+                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" class="modal-close-edit px-3 py-1.5 bg-gray-200 text-gray-800 rounded-lg text-sm font-bold">キャンセル</button>
+                            <button type="submit" class="px-4 py-1.5 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 shadow">変更を保存</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理者ログイン Modal -->
+    <div id="loginModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 max-w-xs mx-auto rounded-2xl shadow-2xl z-50">
+            <div class="modal-content py-5 text-left px-6">
+                <div class="flex justify-between items-center pb-2 border-b border-gray-200">
+                    <p class="text-base font-bold text-gray-800">管理者認証</p>
+                    <button class="modal-close-login cursor-pointer z-50 text-gray-400 hover:text-gray-600">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form id="loginForm" class="mt-4">
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">管理者パスワード</label>
+                        <input type="password" id="adminPasswordInput" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" placeholder="パスワードを入力" required>
+                    </div>
+                    <button type="submit" class="w-full py-2 bg-equestrian-dark hover:bg-emerald-950 text-white rounded-lg text-sm font-bold shadow">ログイン</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // デフォルトの初期シフトデータ（初期登録者は空の状態で設定）
+        const DEFAULT_SHIFTS = [
+            { id: "1", startTime: "09:00", endTime: "10:30", required: 6, members: [] },
+            { id: "2", startTime: "10:30", endTime: "12:00", required: 6, members: [] },
+            { id: "3", startTime: "12:00", endTime: "13:30", required: 6, members: [] },
+            { id: "4", startTime: "13:30", endTime: "15:00", required: 6, members: [] }
+        ];
+
+        // 状態管理
+        let shifts = [];
+        let isAdmin = false;
+        let alarmConfig = {
+            enabled: false,
+            minutesBefore: 5,
+            notifiedShiftIds: []
+        };
+
+        // 初期化処理
+        document.addEventListener('DOMContentLoaded', () => {
+            loadShifts();
+            loadAlarmConfig();
+            populateTimeDropdowns();
+            renderShifts();
+            setupEventListeners();
+            startAlarmChecker();
+        });
+
+        // ドラムロール形式のセレクトボックス肢を生成
+        function populateTimeDropdowns() {
+            const hours = Array.from({length: 12}, (_, i) => String(i + 8).padStart(2, '0')); // 08 ~ 19
+            const mins = Array.from({length: 12}, (_, i) => String(i * 5).padStart(2, '0'));  // 00 ~ 55 (5分刻み)
+
+            const targetDropdowns = [
+                { h: 'newStartHour', m: 'newStartMin', defaultH: '09', defaultM: '00' },
+                { h: 'newEndHour', m: 'newEndMin', defaultH: '10', defaultM: '30' },
+                { h: 'editStartHour', m: 'editStartMin', defaultH: '09', defaultM: '00' },
+                { h: 'editEndHour', m: 'editEndMin', defaultH: '10', defaultM: '30' }
+            ];
+
+            targetDropdowns.forEach(item => {
+                const hEl = document.getElementById(item.h);
+                const mEl = document.getElementById(item.m);
+
+                if(hEl && mEl) {
+                    hEl.innerHTML = hours.map(h => `<option value="${h}" ${h === item.defaultH ? 'selected':''}>${h}時</option>`).join('');
+                    mEl.innerHTML = mins.map(m => `<option value="${m}" ${m === item.defaultM ? 'selected':''}>${m}分</option>`).join('');
+                }
+            });
+        }
+
+        // ローカルストレージからの読み込み
+        function loadShifts() {
+            const saved = localStorage.getItem('wins_mejiro_shifts');
+            if (saved) {
+                try {
+                    shifts = JSON.parse(saved);
+                } catch (e) {
+                    shifts = [...DEFAULT_SHIFTS];
+                }
+            } else {
+                shifts = [...DEFAULT_SHIFTS];
+            }
+            sortShiftsByTime();
+        }
+
+        // シフトの保存 & 昇順ソート
+        function saveShifts() {
+            sortShiftsByTime();
+            localStorage.setItem('wins_mejiro_shifts', JSON.stringify(shifts));
+            renderShifts();
+        }
+
+        // 時間順（昇順）に並び替える関数
+        function sortShiftsByTime() {
+            shifts.sort((a, b) => a.startTime.localeCompare(b.startTime));
+        }
+
+        // アラーム設定の読み込み
+        function loadAlarmConfig() {
+            const saved = localStorage.getItem('wins_mejiro_alarm_config');
+            if (saved) {
+                try {
+                    alarmConfig = JSON.parse(saved);
+                } catch (e) {}
+            }
+            updateAlarmUI();
+        }
+
+        function saveAlarmConfig() {
+            localStorage.setItem('wins_mejiro_alarm_config', JSON.stringify(alarmConfig));
+            updateAlarmUI();
+        }
+
+        function updateAlarmUI() {
+            const banner = document.getElementById('alarmActiveBanner');
+            const toggle = document.getElementById('enableAlarmToggle');
+            const toggleLabel = document.getElementById('alarmToggleLabel');
+            const timingSelect = document.getElementById('alarmTimingSelect');
+            const timeText = document.getElementById('alarmTimeText');
+
+            toggle.checked = alarmConfig.enabled;
+            toggleLabel.innerText = alarmConfig.enabled ? '有効' : '無効';
+            timingSelect.value = alarmConfig.minutesBefore;
+
+            if(alarmConfig.enabled) {
+                banner.classList.remove('hidden');
+                timeText.innerText = `シフト開始の${alarmConfig.minutesBefore == 0 ? '時刻ちょうど' : alarmConfig.minutesBefore + '分前'}に通知とアラーム音が鳴ります。`;
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        // シフト一覧の描画
+        function renderShifts() {
+            const grid = document.getElementById('shiftGrid');
+            grid.innerHTML = '';
+
+            document.getElementById('totalShiftCount').innerText = `全 ${shifts.length} 枠`;
+
+            shifts.forEach(shift => {
+                const currentCount = shift.members.length;
+                const reqCount = shift.required;
+                const diff = reqCount - currentCount;
+                const isSufficient = diff <= 0;
+
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-2xl shadow-sm border-2 transition hover:shadow-md relative flex flex-col justify-between overflow-hidden ${
+                    isSufficient ? 'border-emerald-300' : 'border-amber-300'
+                }`;
+
+                // ヘッダー部デザイン
+                let badgeHtml = isSufficient
+                    ? `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-check"></i> 充足（${currentCount}人）</span>`
+                    : `<span class="bg-amber-500 text-white text-xs font-extrabold px-3 py-1 rounded-full animate-bounce shadow"><i class="fa-solid fa-user-plus"></i> あと${diff}人！</span>`;
+
+                let membersListHtml = shift.members.length > 0
+                    ? shift.members.map(m => `<span class="inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-2.5 py-1 rounded-lg font-medium">${escapeHtml(m)}</span>`).join('')
+                    : `<span class="text-xs text-gray-400 italic">まだ誰も登録していません</span>`;
+
+                card.innerHTML = `
+                    <div>
+                        <!-- シフト時間ヘッダー -->
+                        <div class="p-4 border-b border-gray-100 bg-gradient-to-r ${isSufficient ? 'from-emerald-50/50' : 'from-amber-50/50'} to-transparent flex justify-between items-center">
+                            <div>
+                                <div class="text-xl font-extrabold font-mono text-gray-800 tracking-tight">
+                                    ${shift.startTime} <span class="text-sm text-gray-400 font-sans">〜</span> ${shift.endTime}
+                                </div>
+                                <div class="text-xs text-gray-500 font-bold mt-0.5">必要人数: ${reqCount}名</div>
+                            </div>
+                            <div class="flex flex-col items-end gap-1">
+                                ${badgeHtml}
+                                ${isAdmin ? `<button onclick="openEditModal('${shift.id}')" class="text-xs text-amber-700 hover:underline font-bold mt-1"><i class="fa-solid fa-pen"></i> 枠調整</button>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- 登録済みメンバーリスト -->
+                        <div class="p-4">
+                            <div class="text-xs font-bold text-gray-500 mb-2 flex justify-between items-center">
+                                <span><i class="fa-solid fa-users text-emerald-600"></i> 参加者一覧</span>
+                                <span class="text-gray-400 font-normal">${currentCount} / ${reqCount}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5 min-h-[50px] items-start">
+                                ${membersListHtml}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作エリア（カレンダー登録・登録ボタン） -->
+                    <div class="p-4 pt-0 mt-2 flex gap-2">
+                        <button onclick="addToGoogleCalendar('${shift.startTime}', '${shift.endTime}')" title="Googleカレンダーに追加" class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center">
+                            <i class="fa-regular fa-calendar-plus"></i>
+                        </button>
+                        <button onclick="openRegisterModal('${shift.id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition shadow-sm flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-user-check"></i> 登録・交代する
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Googleカレンダー追加用リンク生成
+        function addToGoogleCalendar(startTime, endTime) {
+            const today = new Date().toISOString().slice(0,10).replace(/-/g, '');
+            const startClean = startTime.replace(':', '') + '00';
+            const endClean = endTime.replace(':', '') + '00';
+            
+            const title = encodeURIComponent("ウインズめじろ（馬術部展示）シフト");
+            const details = encodeURIComponent("文化祭シフト参加");
+            const location = encodeURIComponent("馬術部展示会場");
+            
+            const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${today}T${startClean}/${today}T${endClean}&details=${details}&location=${location}`;
+            window.open(url, '_blank');
+        }
+
+        // イベントリスナー設定
+        function setupEventListeners() {
+            // 管理者ログイン関連
+            document.getElementById('adminLoginBtn').addEventListener('click', () => {
+                if(isAdmin) {
+                    isAdmin = false;
+                    document.getElementById('adminPanel').classList.add('hidden');
+                    document.getElementById('adminBtnText').innerText = '管理者';
+                    renderShifts();
+                } else {
+                    toggleModal('loginModal', true);
+                }
+            });
+
+            document.getElementById('loginForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const pwd = document.getElementById('adminPasswordInput').value;
+                if(pwd === 'admin1d') {
+                    isAdmin = true;
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    document.getElementById('adminBtnText').innerText = 'ログアウト';
+                    toggleModal('loginModal', false);
+                    document.getElementById('adminPasswordInput').value = '';
+                    renderShifts();
+                } else {
+                    alert('パスワードが違います');
+                }
+            });
+
+            // シフト追加フォーム (管理者)
+            document.getElementById('addShiftForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const sH = document.getElementById('newStartHour').value;
+                const sM = document.getElementById('newStartMin').value;
+                const eH = document.getElementById('newEndHour').value;
+                const eM = document.getElementById('newEndMin').value;
+                
+                const startTime = `${sH}:${sM}`;
+                const endTime = `${eH}:${eM}`;
+                const required = parseInt(document.getElementById('newRequired').value);
+
+                if(startTime >= endTime) {
+                    alert('終了時間は開始時間より後に設定してください。');
+                    return;
+                }
+
+                const newShift = {
+                    id: Date.now().toString(),
+                    startTime,
+                    endTime,
+                    required,
+                    members: []
+                };
+
+                shifts.push(newShift);
+                saveShifts();
+                alert('シフト枠を追加しました（自動で時間順に並び替えられます）。');
+            });
+
+            // 登録/交代モーダルのタブ切り替え
+            const tabAdd = document.getElementById('tabAdd');
+            const tabSwap = document.getElementById('tabSwap');
+            const formAdd = document.getElementById('addMemberForm');
+            const formSwap = document.getElementById('swapMemberForm');
+
+            tabAdd.addEventListener('click', () => {
+                tabAdd.className = "flex-1 py-2 text-center text-emerald-700 border-b-2 border-emerald-600 font-bold";
+                tabSwap.className = "flex-1 py-2 text-center text-gray-400 hover:text-gray-600 font-bold";
+                formAdd.classList.remove('hidden');
+                formSwap.classList.add('hidden');
+            });
+
+            tabSwap.addEventListener('click', () => {
+                tabSwap.className = "flex-1 py-2 text-center text-amber-600 border-b-2 border-amber-500 font-bold";
+                tabAdd.className = "flex-1 py-2 text-center text-gray-400 hover:text-gray-600 font-bold";
+                formSwap.classList.remove('hidden');
+                formAdd.classList.add('hidden');
+            });
+
+            // メンバー追加実行
+            formAdd.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const shiftId = document.getElementById('modalShiftId').value;
+                const name = document.getElementById('memberNameInput').value.trim();
+                
+                const shift = shifts.find(s => s.id === shiftId);
+                if(shift && name) {
+                    shift.members.push(name);
+                    saveShifts();
+                    toggleModal('registerModal', false);
+                    document.getElementById('memberNameInput').value = '';
+                }
+            });
+
+            // メンバー交代実行
+            formSwap.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const shiftId = document.getElementById('modalShiftId').value;
+                const fromName = document.getElementById('swapFromSelect').value;
+                const toName = document.getElementById('swapToInput').value.trim();
+
+                const shift = shifts.find(s => s.id === shiftId);
+                if(shift && fromName && toName) {
+                    const idx = shift.members.indexOf(fromName);
+                    if(idx !== -1) {
+                        shift.members[idx] = toName;
+                        saveShifts();
+                        toggleModal('registerModal', false);
+                        document.getElementById('swapToInput').value = '';
+                    }
+                }
+            });
+
+            // シフト編集 (管理者)
+            document.getElementById('editShiftForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('editShiftId').value;
+                const sH = document.getElementById('editStartHour').value;
+                const sM = document.getElementById('editStartMin').value;
+                const eH = document.getElementById('editEndHour').value;
+                const eM = document.getElementById('editEndMin').value;
+
+                const startTime = `${sH}:${sM}`;
+                const endTime = `${eH}:${eM}`;
+                const required = parseInt(document.getElementById('editRequired').value);
+
+                if(startTime >= endTime) {
+                    alert('終了時間は開始時間より後に設定してください。');
+                    return;
+                }
+
+                const shift = shifts.find(s => s.id === id);
+                if(shift) {
+                    shift.startTime = startTime;
+                    shift.endTime = endTime;
+                    shift.required = required;
+                    saveShifts();
+                    toggleModal('editShiftModal', false);
+                }
+            });
+
+            // シフト削除 (管理者)
+            document.getElementById('deleteShiftBtn').addEventListener('click', () => {
+                const id = document.getElementById('editShiftId').value;
+                if(confirm('このシフト枠を削除しても宜しいですか？')) {
+                    shifts = shifts.filter(s => s.id !== id);
+                    saveShifts();
+                    toggleModal('editShiftModal', false);
+                }
+            });
+
+            // アラーム設定モーダル表示
+            document.getElementById('alarmSettingsBtn').addEventListener('click', () => {
+                toggleModal('alarmModal', true);
+            });
+
+            // アラーム音テストボタン
+            document.getElementById('testSoundBtn').addEventListener('click', () => {
+                playAlarmSound();
+            });
+
+            // アラーム設定の保存
+            document.getElementById('saveAlarmSettingsBtn').addEventListener('click', () => {
+                const enabled = document.getElementById('enableAlarmToggle').checked;
+                const timing = parseInt(document.getElementById('alarmTimingSelect').value);
+
+                if(enabled && Notification.permission !== "granted") {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === "granted") {
+                            alarmConfig.enabled = true;
+                            alarmConfig.minutesBefore = timing;
+                            saveAlarmConfig();
+                            toggleModal('alarmModal', false);
+                        } else {
+                            alert('ブラウザの通知権限が拒否されています。ブラウザの設定で通知を許可してください。');
+                        }
+                    });
+                } else {
+                    alarmConfig.enabled = enabled;
+                    alarmConfig.minutesBefore = timing;
+                    saveAlarmConfig();
+                    toggleModal('alarmModal', false);
+                }
+            });
+
+            // モーダル閉じるボタンの一般設定
+            document.querySelectorAll('.modal-close').forEach(el => {
+                el.addEventListener('click', () => toggleModal('registerModal', false));
+            });
+            document.querySelectorAll('.modal-close-edit').forEach(el => {
+                el.addEventListener('click', () => toggleModal('editShiftModal', false));
+            });
+            document.querySelectorAll('.modal-close-login').forEach(el => {
+                el.addEventListener('click', () => toggleModal('loginModal', false));
+            });
+            document.querySelectorAll('.modal-close-alarm').forEach(el => {
+                el.addEventListener('click', () => toggleModal('alarmModal', false));
+            });
+        }
+
+        // モーダル表示切替
+        function toggleModal(modalId, show) {
+            const modal = document.getElementById(modalId);
+            if(show) {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                document.body.classList.add('modal-active');
+            } else {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                document.body.classList.remove('modal-active');
+            }
+        }
+
+        // 登録・交代モーダルを開く
+        function openRegisterModal(shiftId) {
+            const shift = shifts.find(s => s.id === shiftId);
+            if(!shift) return;
+
+            document.getElementById('modalShiftId').value = shift.id;
+            document.getElementById('modalShiftTime').innerText = `シフト枠: ${shift.startTime} 〜 ${shift.endTime}`;
+
+            // 交代元セレクトの更新
+            const select = document.getElementById('swapFromSelect');
+            select.innerHTML = '';
+            if(shift.members.length === 0) {
+                select.innerHTML = '<option value="">(登録されている人がいません)</option>';
+            } else {
+                shift.members.forEach(m => {
+                    select.innerHTML += `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`;
+                });
+            }
+
+            // 初期表示は「新規登録」タブ
+            document.getElementById('tabAdd').click();
+            toggleModal('registerModal', true);
+        }
+
+        // 編集モーダルを開く（管理者専用）
+        function openEditModal(shiftId) {
+            const shift = shifts.find(s => s.id === shiftId);
+            if(!shift) return;
+
+            document.getElementById('editShiftId').value = shift.id;
+            
+            const [sH, sM] = shift.startTime.split(':');
+            const [eH, eM] = shift.endTime.split(':');
+
+            document.getElementById('editStartHour').value = sH;
+            document.getElementById('editStartMin').value = sM;
+            document.getElementById('editEndHour').value = eH;
+            document.getElementById('editEndMin').value = eM;
+            document.getElementById('editRequired').value = shift.required;
+
+            toggleModal('editShiftModal', true);
+        }
+
+        // XSS防止用エスケープ関数
+        function escapeHtml(str) {
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+        }
+
+        // アラーム音の再生 (Web Audio API を利用してピピピ音を生成)
+        function playAlarmSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const ctx = new AudioContext();
+
+                const playBeep = (time, freq) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(time);
+                    gain.gain.setValueAtTime(0.3, time);
+                    gain.gain.exponentialRampToValueAtTime(0.00001, time + 0.15);
+                    osc.stop(time + 0.15);
+                };
+
+                const now = ctx.currentTime;
+                playBeep(now, 880);       // A5
+                playBeep(now + 0.2, 880);
+                playBeep(now + 0.4, 1046.5); // C6
+            } catch(e) {
+                console.log("Audio play blocked or not supported", e);
+            }
+        }
+
+        // 毎分監視してアラームを発生させるタイマー処理
+        function startAlarmChecker() {
+            setInterval(() => {
+                if(!alarmConfig.enabled) return;
+
+                const now = new Date();
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                shifts.forEach(shift => {
+                    const [h, m] = shift.startTime.split(':').map(Number);
+                    const shiftStartMinutes = h * 60 + m;
+                    const triggerMinutes = shiftStartMinutes - alarmConfig.minutesBefore;
+
+                    // アラーム発生条件（かつまだ通知していない枠）
+                    if (currentMinutes === triggerMinutes && !alarmConfig.notifiedShiftIds.includes(shift.id)) {
+                        triggerAlarmNotification(shift);
+                        alarmConfig.notifiedShiftIds.push(shift.id);
+                        saveAlarmConfig();
+                    }
+                });
+            }, 30000); // 30秒ごとにチェック
+        }
+
+        // アラーム通知および音の発生実行
+        function triggerAlarmNotification(shift) {
+            playAlarmSound();
+
+            const message = `ウインズめじろ（馬術部展示）\n【${shift.startTime}〜】のシフト開始 ${alarmConfig.minutesBefore == 0 ? '時間' : alarmConfig.minutesBefore + '分前'} です！準備をお願いします。`;
+
+            if (Notification.permission === "granted") {
+                new Notification("⏰ シフト開始アラーム", {
+                    body: message,
+                    icon: "https://cdn-icons-png.flaticon.com/512/3112/3112905.png"
+                });
+            } else {
+                alert(message);
+            }
+        }
+    </script>
+</body>
+</html>
